@@ -1,5 +1,9 @@
 package hr.fer.zemris.sandworm.packer
 
+import com.github.dockerjava.api.DockerClient
+import com.github.dockerjava.api.model.BuildResponseItem
+import com.github.dockerjava.core.DockerClientBuilder
+import com.github.dockerjava.core.command.BuildImageResultCallback
 import java.io.File
 
 class Packer {
@@ -20,8 +24,16 @@ class Packer {
 
             log("Directory structure OK!")
 
+            val dockerClient = DockerClientBuilder.getInstance().build()
+
             log("Building source image...")
-            val sourceImageName = buildImageWithSource(baseImage, "$imagePrefix/source", File(inputDefinitionDirectory, SOURCE_DIR))
+            val sourceImageName = buildImageWithExtraDirectory(
+                    dockerClient,
+                    baseImage,
+                    "$imagePrefix/source",
+                    File(inputDefinitionDirectory, SOURCE_DIR)
+            )
+            // TODO push image
             log("Built source image $sourceImageName")
 
             log("Building definition images")
@@ -30,7 +42,8 @@ class Packer {
                     .filter { it.isDirectory }
                     .map { inputDefinition ->
                         log("Building definition image for definition ${inputDefinition.name}")
-                        val imageName = buildImageWithSourceAndDefinition(
+                        val imageName = buildImageWithExtraDirectory(
+                                dockerClient,
                                 sourceImageName,
                                 "$imagePrefix/compiled/${inputDefinition.name}",
                                 inputDefinition
@@ -49,29 +62,16 @@ class Packer {
                         && File(inputDefinitionDirectory, SOURCE_DIR).isDirectory
                         && File(inputDefinitionDirectory, INPUTS_DIR).isDirectory
 
-        fun buildImageWithSource(baseImage: String, imageTag: String, sourceDirectory: File): String {
+        fun buildImageWithExtraDirectory(dockerClient: DockerClient, baseImage: String, imageTag: String, sourceDirectory: File): String {
             val temporaryDirectory = createTempDir()
             sourceDirectory.copyRecursively(temporaryDirectory, true)
             writeCopyingDockerfile(baseImage, temporaryDirectory)
 
-            // TODO docker build and tag
+            val builtImageId = buildDockerImage(dockerClient, temporaryDirectory)
+            // TODO tag the image
 
             temporaryDirectory.deleteRecursively()
-            return imageTag
-        }
-
-        fun buildImageWithSourceAndDefinition(baseImage: String, imageTag: String, inputDefinitionsDirectory: File): String {
-            val temporaryDirectory = createTempDir()
-
-            inputDefinitionsDirectory.copyRecursively(temporaryDirectory, true)
-
-            writeCopyingDockerfile(baseImage, temporaryDirectory)
-
-            // TODO docker build and tag
-
-            temporaryDirectory.deleteRecursively()
-
-            return imageTag
+            return builtImageId
         }
 
         fun writeCopyingDockerfile(baseImage: String, targetDirectory: File): File {
@@ -90,6 +90,14 @@ class Packer {
 
             return outputFile
         }
+
+        fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File) =
+                dockerClient.buildImageCmd(imageDirectory).exec(object : BuildImageResultCallback() {
+                    override fun onNext(item: BuildResponseItem) {
+                        log(item.toString())
+                        super.onNext(item)
+                    }
+                }).awaitImageId()
 
         fun log(message: String) {
             // TODO log to logger server
