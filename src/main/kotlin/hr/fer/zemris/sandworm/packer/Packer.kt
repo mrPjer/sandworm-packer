@@ -16,45 +16,50 @@ class Packer {
 
         fun pack(inputDefinitionDirectory: File, baseImage: String, imagePrefix: String) {
 
-            log("Checking directory structure")
+            log("packer/init", "Checking directory structure")
             if (!hasProperDirectoryStructure(inputDefinitionDirectory)) {
-                log("Directory structure not OK!")
+                log("packer/init", "Directory structure not OK!")
                 throw IllegalArgumentException("Input definition is not properly formed!")
             }
 
-            log("Directory structure OK!")
+            log("packer/init", "Directory structure OK!")
 
             val dockerClient = DockerClientBuilder.getInstance().build()
 
-            log("Building source image...")
+            log("packer/build/source", "Building source image...")
             val sourceImageName = buildImageWithExtraDirectory(
                     dockerClient,
                     baseImage,
                     "$imagePrefix/source",
-                    File(inputDefinitionDirectory, SOURCE_DIR)
+                    File(inputDefinitionDirectory, SOURCE_DIR),
+                    { log("packer/build/source", it) }
             )
             // TODO push image
-            log("Built source image $sourceImageName")
+            log("packer/build/source", "Built source image $sourceImageName")
 
-            log("Building definition images")
+            log("packer/build/definition", "Building definition images")
             File(inputDefinitionDirectory, INPUTS_DIR)
                     .listFiles()
                     .filter { it.isDirectory }
                     .map { inputDefinition ->
-                        log("Building definition image for definition ${inputDefinition.name}")
+                        val tag = "packer/build/definition/${inputDefinition.name}"
+                        log(
+                                tag,
+                                "Building definition image for definition ${inputDefinition.name}"
+                        )
                         val imageName = buildImageWithExtraDirectory(
                                 dockerClient,
                                 sourceImageName,
                                 "$imagePrefix/compiled/${inputDefinition.name}",
-                                inputDefinition
+                                inputDefinition,
+                                { message -> log(tag, message) }
                         )
-                        log("Built definition image $imageName")
+                        log(
+                                tag,
+                                "Built definition image $imageName"
+                        )
                         imageName
-                    }.forEach { imageName ->
-                log("Pushing image $imageName")
-                // TODO push image
-            }
-
+                    }.forEach { imageName -> log("packer/build/definition", "Pushing image $imageName") }
         }
 
         fun hasProperDirectoryStructure(inputDefinitionDirectory: File) =
@@ -62,12 +67,12 @@ class Packer {
                         && File(inputDefinitionDirectory, SOURCE_DIR).isDirectory
                         && File(inputDefinitionDirectory, INPUTS_DIR).isDirectory
 
-        fun buildImageWithExtraDirectory(dockerClient: DockerClient, baseImage: String, imageTag: String, sourceDirectory: File): String {
+        fun buildImageWithExtraDirectory(dockerClient: DockerClient, baseImage: String, imageTag: String, sourceDirectory: File, log: (String) -> Unit): String {
             val temporaryDirectory = createTempDir()
             sourceDirectory.copyRecursively(temporaryDirectory, true)
             writeCopyingDockerfile(baseImage, temporaryDirectory)
 
-            val builtImageId = buildDockerImage(dockerClient, temporaryDirectory)
+            val builtImageId = buildDockerImage(dockerClient, temporaryDirectory, log)
             // TODO tag the image
 
             temporaryDirectory.deleteRecursively()
@@ -91,7 +96,7 @@ class Packer {
             return outputFile
         }
 
-        fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File) =
+        fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File, log: (String) -> Unit) =
                 dockerClient.buildImageCmd(imageDirectory).exec(object : BuildImageResultCallback() {
                     override fun onNext(item: BuildResponseItem) {
                         log(item.stream.toString())
@@ -99,9 +104,9 @@ class Packer {
                     }
                 }).awaitImageId()
 
-        fun log(message: String) {
+        fun log(tag: String, message: String) {
             // TODO log to logger server
-            println(message)
+            println("$tag :: $message")
         }
 
     }
