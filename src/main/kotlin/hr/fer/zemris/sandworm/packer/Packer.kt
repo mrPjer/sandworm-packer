@@ -89,6 +89,7 @@ class Packer {
             val dockerfileContents = """
             FROM $baseImage
             COPY . .
+            RUN ./compile.sh
             """.trim()
 
             outputFile.writeText(dockerfileContents)
