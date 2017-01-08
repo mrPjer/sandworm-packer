@@ -69,7 +69,7 @@ class Packer {
 
         fun buildImageWithExtraDirectory(dockerClient: DockerClient, baseImage: String, imageTag: String, sourceDirectory: File, log: (String) -> Unit): String {
             val temporaryDirectory = createTempDir()
-            sourceDirectory.copyRecursively(temporaryDirectory, true)
+            sourceDirectory.copyRecursively(temporaryDirectory, false)
             writeCopyingDockerfile(baseImage, temporaryDirectory)
 
             val builtImageId = buildDockerImage(dockerClient, temporaryDirectory, log)
