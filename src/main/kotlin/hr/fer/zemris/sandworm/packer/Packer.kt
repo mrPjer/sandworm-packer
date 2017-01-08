@@ -72,8 +72,7 @@ class Packer {
             sourceDirectory.copyRecursively(temporaryDirectory, false)
             writeCopyingDockerfile(baseImage, temporaryDirectory)
 
-            val builtImageId = buildDockerImage(dockerClient, temporaryDirectory, log)
-            // TODO tag the image
+            val builtImageId = buildDockerImage(dockerClient, temporaryDirectory, imageTag, log)
 
             temporaryDirectory.deleteRecursively()
             return builtImageId
@@ -97,13 +96,16 @@ class Packer {
             return outputFile
         }
 
-        fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File, log: (String) -> Unit) =
-                dockerClient.buildImageCmd(imageDirectory).exec(object : BuildImageResultCallback() {
-                    override fun onNext(item: BuildResponseItem) {
-                        log(item.stream.toString())
-                        super.onNext(item)
-                    }
-                }).awaitImageId()
+        fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File, tag: String, log: (String) -> Unit) =
+                dockerClient
+                        .buildImageCmd(imageDirectory)
+                        .withTag(tag.trim().replace(' ', '_'))
+                        .exec(object : BuildImageResultCallback() {
+                            override fun onNext(item: BuildResponseItem) {
+                                log(item.stream.toString())
+                                super.onNext(item)
+                            }
+                        }).awaitImageId()
 
         fun log(tag: String, message: String) {
             // TODO log to logger server

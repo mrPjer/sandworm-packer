@@ -11,21 +11,23 @@ fun main(args: Array<String>) {
     val options = Options().apply {
         addOption("b", "base-image", true, "Define the base image to build upon (e.g. sandworm/base/c_cpp")
         addOption("s", "source-directory", true, "The location from which to take the source and the input files")
+        addOption("p", "image-prefix", true, "The tag prefix of the generated images (e.g. sandworm/images/some_id)")
     }
 
     val parser = DefaultParser()
 
     val commandLine = parser.parse(options, args)
 
-    if (!commandLine.hasOption('b') || !commandLine.hasOption('s')) {
+    val hasAllOptions = arrayOf('b', 's', 'p').all { commandLine.hasOption(it) }
+    if (!hasAllOptions) {
         HelpFormatter().printHelp("packer", options)
         return
     }
 
     Packer.pack(
-            File("src/main/resources/c_sample"),
+            File(commandLine.getOptionValue('s')),
             commandLine.getOptionValue('b'),
-            commandLine.getOptionValue('s')
+            commandLine.getOptionValue('p')
     )
 
 }
