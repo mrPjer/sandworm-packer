@@ -94,7 +94,7 @@ class Packer {
         fun buildDockerImage(dockerClient: DockerClient, imageDirectory: File) =
                 dockerClient.buildImageCmd(imageDirectory).exec(object : BuildImageResultCallback() {
                     override fun onNext(item: BuildResponseItem) {
-                        log(item.toString())
+                        log(item.stream.toString())
                         super.onNext(item)
                     }
                 }).awaitImageId()
