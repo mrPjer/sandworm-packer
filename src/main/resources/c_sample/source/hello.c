@@ -1,6 +1,10 @@
 #include <stdio.h>
 
 int main() {
-    printf("Hello, world!");
+    char buffer[256];
+
+    scanf("%s", buffer);
+
+    printf("Hello, %s!", buffer);
     return 0;
 }
