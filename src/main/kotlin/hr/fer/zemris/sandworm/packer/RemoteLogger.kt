@@ -5,7 +5,10 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.time.LocalDateTime
 
-class RemoteLogger(val endpoint: String) {
+class RemoteLogger(
+        val taskId: String,
+        val endpoint: String
+) {
 
     companion object {
         const val PARAM_TAG = "tag"
@@ -17,7 +20,7 @@ class RemoteLogger(val endpoint: String) {
 
     fun log(tag: String, message: String) {
         val request = Request.Builder()
-                .url("$endpoint/packer-test")
+                .url("$endpoint/$taskId")
                 .post(FormBody.Builder()
                         .add(PARAM_TAG, tag)
                         .add(PARAM_CONTENT, message)
