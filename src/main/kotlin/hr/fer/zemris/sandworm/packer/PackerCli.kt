@@ -24,7 +24,7 @@ fun main(args: Array<String>) {
         return
     }
 
-    Packer.pack(
+    Packer(RemoteLogger("http://localhost:8080")).pack(
             File(commandLine.getOptionValue('s')),
             commandLine.getOptionValue('b'),
             commandLine.getOptionValue('p')
