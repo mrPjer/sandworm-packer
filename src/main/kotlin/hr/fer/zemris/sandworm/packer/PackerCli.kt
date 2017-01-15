@@ -12,6 +12,7 @@ fun main(args: Array<String>) {
         addOption("b", "base-image", true, "Define the base image to build upon (e.g. sandworm/base/c_cpp")
         addOption("s", "source-directory", true, "The location from which to take the source and the input files")
         addOption("p", "image-prefix", true, "The tag prefix of the generated images (e.g. sandworm/images/some_id)")
+        addOption("l", "logger-endpoint", true, "The (optional) location of a remote sandworm logger (e.g. http://localhost:8080)")
     }
 
     val parser = DefaultParser()
@@ -24,7 +25,11 @@ fun main(args: Array<String>) {
         return
     }
 
-    Packer(RemoteLogger("http://localhost:8080")).pack(
+    val endpoint = commandLine.getOptionValue("l")
+
+    val logger = endpoint?.let(::RemoteLogger)
+
+    Packer(logger).pack(
             File(commandLine.getOptionValue('s')),
             commandLine.getOptionValue('b'),
             commandLine.getOptionValue('p')
