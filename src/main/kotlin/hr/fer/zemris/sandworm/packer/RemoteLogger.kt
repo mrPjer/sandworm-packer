@@ -6,7 +6,6 @@ import okhttp3.Request
 import java.time.LocalDateTime
 
 class RemoteLogger(
-        val taskId: String,
         val endpoint: String
 ) {
 
@@ -18,9 +17,11 @@ class RemoteLogger(
 
     private val client = OkHttpClient()
 
+    constructor(taskId: String, endpoint: String) : this("$endpoint/$taskId")
+
     fun log(tag: String, message: String) {
         val request = Request.Builder()
-                .url("$endpoint/$taskId")
+                .url(endpoint)
                 .post(FormBody.Builder()
                         .add(PARAM_TAG, tag)
                         .add(PARAM_CONTENT, message)
